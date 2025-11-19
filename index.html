@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Simple Zener Diode Simulation</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #eee;
+        padding: 20px;
+    }
+    .container {
+        max-width: 600px;
+        margin: auto;
+        background: #222;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    input[type=range] {
+        width: 100%;
+    }
+    .block {
+        margin-bottom: 20px;
+    }
+    .result {
+        padding: 12px;
+        background: #000;
+        border-radius: 8px;
+        font-size: 18px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Zener Diode Voltage Regulator</h1>
+    <p>This simulator shows how a Zener diode keeps the output voltage nearly constant when in breakdown.</p>
+
+    <h3>Circuit</h3>
+    <pre>
+Input → R → Zener → Ground
+    </pre>
+
+    <div class="block">
+        <label>Input Voltage (Vin): <span id="vinLabel">12 V</span></label>
+        <input type="range" id="vin" min="0" max="20" step="0.1" value="12">
+    </div>
+
+    <div class="block">
+        <label>Series Resistor (R): <span id="rLabel">470 Ω</span></label>
+        <input type="range" id="r" min="50" max="2000" step="10" value="470">
+    </div>
+
+    <div class="block">
+        <label>Zener Voltage (Vz): <span id="vzLabel">5.1 V</span></label>
+        <input type="range" id="vz" min="2" max="12" step="0.1" value="5.1">
+    </div>
+
+    <div class="block">
+        <label>Load Resistor (RL): <span id="rlLabel">1000 Ω</span></label>
+        <input type="range" id="rl" min="200" max="5000" step="100" value="1000">
+    </div>
+
+    <h3>Output</h3>
+    <div class="result">
+        Vout = <span id="vout">0</span> V<br>
+        Zener Current = <span id="iz">0</span> mA<br>
+        Load Current = <span id="il">0</span> mA
+    </div>
+</div>
+
+<script>
+function update() {
+
+    let Vin = parseFloat(document.getElementById("vin").value);
+    let R = parseFloat(document.getElementById("r").value);
+    let Vz = parseFloat(document.getElementById("vz").value);
+    let RL = parseFloat(document.getElementById("rl").value);
+
+    document.getElementById("vinLabel").innerText = Vin + " V";
+    document.getElementById("rLabel").innerText = R + " Ω";
+    document.getElementById("vzLabel").innerText = Vz + " V";
+    document.getElementById("rlLabel").innerText = RL + " Ω";
+
+    let Vout, Iz, Il;
+
+    // Load current (assuming Zener clamps)
+    Il = Vz / RL;
+
+    // Total available current
+    let Itotal = (Vin - Vz) / R;
+
+    if (Itotal <= Il || Vin < Vz) {
+        // Zener not regulating
+        Vout = Vin * (RL / (R + RL));
+        Iz = 0;
+        Il = Vout / RL;
+    } else {
+        // Zener regulating
+        Vout = Vz;
+        Iz = Itotal - Il;
+    }
+
+    document.getElementById("vout").innerText = Vout.toFixed(2);
+    document.getElementById("iz").innerText = (Iz * 1000).toFixed(2);
+    document.getElementById("il").innerText = (Il * 1000).toFixed(2);
+}
+
+document.querySelectorAll("input").forEach(el => {
+    el.addEventListener("input", update);
+});
+
+update();
+</script>
+
+</body>
+</html>
