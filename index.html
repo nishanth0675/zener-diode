@@ -1,118 +1,388 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Simple Zener Diode Simulation</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #111;
-        color: #eee;
-        padding: 20px;
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Zener Diode — Interactive Explainer</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#7bd389; --muted:#9aa7b2; --glass: rgba(255,255,255,0.03);
+      --mono: "Segoe UI Mono", SFMono-Regular, Menlo, Monaco, monospace;
     }
-    .container {
-        max-width: 600px;
-        margin: auto;
-        background: #222;
-        padding: 20px;
-        border-radius: 10px;
-    }
-    input[type=range] {
-        width: 100%;
-    }
-    .block {
-        margin-bottom: 20px;
-    }
-    .result {
-        padding: 12px;
-        background: #000;
-        border-radius: 8px;
-        font-size: 18px;
-    }
-</style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:#e6f0f2;background:linear-gradient(180deg,#071022 0%, #071833 100%);min-height:100vh}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;align-items:center;gap:18px;margin-bottom:18px}
+    header h1{font-size:20px;margin:0}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
+    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+    .controls label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .row{display:flex;gap:8px;align-items:center}
+    input[type=range]{width:100%}
+    .value{min-width:64px;text-align:right;font-family:var(--mono);color:var(--accent)}
+    .circuit{display:flex;flex-direction:column;gap:12px}
+    .canvas-wrap{background:var(--glass);padding:12px;border-radius:10px}
+    .svg-circ{width:100%;height:160px}
+    .kbd{background:#071425;border-radius:6px;padding:6px 8px;color:var(--muted);font-family:var(--mono);font-size:13px}
+    h2{margin:0 0 8px 0}
+
+    .sim-row{display:flex;gap:12px}
+    .info{font-size:14px;color:#cfeff0;line-height:1.45}
+
+    canvas{background:#031021;border-radius:8px;width:100%;height:240px;display:block}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:980px){.grid{grid-template-columns:1fr}.card{padding:12px}}
+
+    /* small helpers */
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:13px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:var(--accent);cursor:pointer}
+    a.link{color:var(--accent)}
+  </style>
 </head>
 <body>
+<div class="wrap">
+  <header>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="24" height="24" rx="6" fill="#041229"/><path d="M6 12h6l-2-2" stroke="#7bd389" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 12h-6l2 2" stroke="#7bd389" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>
+      <h1>Zener Diode — Interactive explainer</h1>
+      <div style="color:var(--muted);font-size:13px">Explore IV curve, clamp behaviour and simple circuit simulation. Open this file in VS Code and preview in your browser.</div>
+    </div>
+  </header>
 
-<div class="container">
-    <h1>Zener Diode Voltage Regulator</h1>
-    <p>This simulator shows how a Zener diode keeps the output voltage nearly constant when in breakdown.</p>
+  <div class="grid">
+    <div class="card controls">
+      <h2>Controls</h2>
+      <div style="margin-bottom:10px;color:var(--muted)">Adjust source and component values to see how the Zener diode behaves.</div>
 
-    <h3>Circuit</h3>
-    <pre>
-Input → R → Zener → Ground
-    </pre>
+      <div style="margin-bottom:12px">
+        <label>Input voltage (Vin) — <span class="value" id="vinVal">12.0 V</span></label>
+        <div class="row"><input id="vin" type="range" min="-20" max="20" step="0.1" value="12"><div style="width:8px"></div></div>
+      </div>
 
-    <div class="block">
-        <label>Input Voltage (Vin): <span id="vinLabel">12 V</span></label>
-        <input type="range" id="vin" min="0" max="20" step="0.1" value="12">
+      <div style="margin-bottom:12px">
+        <label>Series resistor R — <span class="value" id="rVal">1.0 kΩ</span></label>
+        <div class="row"><input id="r" type="range" min="10" max="10000" step="1" value="1000"></div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label>Zener voltage V<sub>Z</sub> — <span class="value" id="vzVal">5.6 V</span></label>
+        <div class="row"><input id="vz" type="range" min="2.4" max="20" step="0.1" value="5.6"></div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label>Dynamic resistance r<sub>z</sub> — <span class="value" id="rzVal">10 Ω</span></label>
+        <div class="row"><input id="rz" type="range" min="0" max="200" step="1" value="10"></div>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <label>Diode orientation</label>
+        <div class="row" style="margin-top:6px"><select id="orientation" class="pill"><option value="reverse">Reverse-biased (Zener clamp)</option><option value="forward">Forward-biased (normal diode)</option></select></div>
+      </div>
+
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button id="reset" class="btn">Reset</button>
+        <div style="flex:1"></div>
+        <div class="kbd">V<sub>f</sub>=0.7V (approx)</div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+      <div class="info">
+        <strong>What this sim models</strong>
+        <p>Simple resistor + diode circuit powered by Vin. When diode is reverse and Vin exceeds V<sub>Z</sub> in magnitude, diode "breaks down" and clamps the voltage near V<sub>Z</sub>. The current through the diode is then set by (Vin - Vz)/R (plus r<sub>z</sub> effect).</p>
+      </div>
+
     </div>
 
-    <div class="block">
-        <label>Series Resistor (R): <span id="rLabel">470 Ω</span></label>
-        <input type="range" id="r" min="50" max="2000" step="10" value="470">
-    </div>
+    <div class="card">
+      <div class="sim-row">
+        <div style="flex:1">
+          <h2>Circuit</h2>
+          <div class="canvas-wrap">
+            <svg class="svg-circ" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet">
+              <!-- battery -->
+              <g transform="translate(20,40)">
+                <rect x="0" y="0" width="100" height="160" rx="12" fill="#071021" stroke="#083048" stroke-width="2"></rect>
+                <text x="50" y="88" fill="#7bd389" font-size="20" text-anchor="middle" font-family="var(--mono)">Vin</text>
+                <text id="svgVin" x="50" y="110" fill="#cfeff0" font-size="13" text-anchor="middle">12.0 V</text>
+              </g>
 
-    <div class="block">
-        <label>Zener Voltage (Vz): <span id="vzLabel">5.1 V</span></label>
-        <input type="range" id="vz" min="2" max="12" step="0.1" value="5.1">
-    </div>
+              <!-- series resistor -->
+              <g transform="translate(140,100)" id="resGroup">
+                <rect x="0" y="-12" width="120" height="24" rx="8" fill="#061323" stroke="#0a3140"/>
+                <text x="60" y="5" fill="#9aa7b2" font-size="13" text-anchor="middle" id="svgR">1.0 kΩ</text>
+              </g>
 
-    <div class="block">
-        <label>Load Resistor (RL): <span id="rlLabel">1000 Ω</span></label>
-        <input type="range" id="rl" min="200" max="5000" step="100" value="1000">
-    </div>
+              <!-- diode symbol -->
+              <g transform="translate(320,120)" id="diodeGroup">
+                <g id="diodeNormal" transform="translate(0,-20)">
+                  <line x1="0" y1="20" x2="80" y2="20" stroke="#9aa7b2" stroke-width="4" stroke-linecap="round"/>
+                  <polygon points="80,10 80,30 110,20" fill="#9aa7b2" opacity="0.9"></polygon>
+                  <rect x="110" y="6" width="40" height="28" fill="#9aa7b2" opacity="0.4"></rect>
+                </g>
+                <g id="diodeZ" transform="translate(0,0)">
+                  <!-- zener style: diode + zigzag line to indicate breakdown -->
+                  <line x1="0" y1="100" x2="80" y2="100" stroke="#7bd389" stroke-width="4" stroke-linecap="round"/>
+                  <polygon points="80,90 80,110 110,100" fill="#7bd389"></polygon>
+                  <!-- small zigzag after cathode -->
+                  <polyline points="150,100 170,92 190,108 210,92 230,108" stroke="#7bd389" stroke-width="3" fill="none" stroke-linejoin="round"></polyline>
+                </g>
+                <text id="svgVz" x="180" y="140" fill="#cfeff0" font-size="13">Vz = 5.6 V</text>
+              </g>
 
-    <h3>Output</h3>
-    <div class="result">
-        Vout = <span id="vout">0</span> V<br>
-        Zener Current = <span id="iz">0</span> mA<br>
-        Load Current = <span id="il">0</span> mA
+              <!-- ground -->
+              <g transform="translate(560,120)">
+                <line x1="0" y1="0" x2="60" y2="0" stroke="#9aa7b2" stroke-width="2"></line>
+                <line x1="10" y1="0" x2="10" y2="46" stroke="#9aa7b2" stroke-width="2"></line>
+                <line x1="0" y1="46" x2="30" y2="46" stroke="#9aa7b2" stroke-width="2"></line>
+              </g>
+
+              <!-- annotation -->
+              <text x="420" y="36" fill="#9aa7b2" font-size="13">Output node (across diode)</text>
+            </svg>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:10px;align-items:center">
+            <div style="flex:1">
+              <div style="color:var(--muted);font-size:13px">Node voltage (Vout):</div>
+              <div style="font-size:20px;color:var(--accent);font-family:var(--mono)" id="vout">5.6 V</div>
+            </div>
+            <div style="flex:1">
+              <div style="color:var(--muted);font-size:13px">Diode current (I<sub>D</sub>):</div>
+              <div style="font-size:20px;color:#ffb78f;font-family:var(--mono)" id="id">6.4 mA</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:420px">
+          <h2>IV Curve</h2>
+          <div class="canvas-wrap">
+            <canvas id="iv" width="600" height="300"></canvas>
+          </div>
+
+          <div style="margin-top:10px;color:var(--muted);font-size:13px">Green vertical line shows selected Vout; orange line shows diode current for that voltage.</div>
+        </div>
+      </div>
+
+      <footer>
+        <strong>How to run</strong> — Save this file as <code style="background:#02121a;padding:3px 6px;border-radius:6px;color:#9be0ab">zener-diode-explainer.html</code> and open it in your browser (or use Live Server in VS Code).
+      </footer>
     </div>
+  </div>
 </div>
 
 <script>
-function update() {
+// Simple model constants and DOM refs
+const vinSlider = document.getElementById('vin');
+const rSlider = document.getElementById('r');
+const vzSlider = document.getElementById('vz');
+const rzSlider = document.getElementById('rz');
+const orientation = document.getElementById('orientation');
+const vinVal = document.getElementById('vinVal');
+const rVal = document.getElementById('rVal');
+const vzVal = document.getElementById('vzVal');
+const rzVal = document.getElementById('rzVal');
+const svgVin = document.getElementById('svgVin');
+const svgR = document.getElementById('svgR');
+const svgVz = document.getElementById('svgVz');
+const voutEl = document.getElementById('vout');
+const idEl = document.getElementById('id');
+const ivCanvas = document.getElementById('iv');
+const ivCtx = ivCanvas.getContext('2d');
+const resetBtn = document.getElementById('reset');
 
-    let Vin = parseFloat(document.getElementById("vin").value);
-    let R = parseFloat(document.getElementById("r").value);
-    let Vz = parseFloat(document.getElementById("vz").value);
-    let RL = parseFloat(document.getElementById("rl").value);
-
-    document.getElementById("vinLabel").innerText = Vin + " V";
-    document.getElementById("rLabel").innerText = R + " Ω";
-    document.getElementById("vzLabel").innerText = Vz + " V";
-    document.getElementById("rlLabel").innerText = RL + " Ω";
-
-    let Vout, Iz, Il;
-
-    // Load current (assuming Zener clamps)
-    Il = Vz / RL;
-
-    // Total available current
-    let Itotal = (Vin - Vz) / R;
-
-    if (Itotal <= Il || Vin < Vz) {
-        // Zener not regulating
-        Vout = Vin * (RL / (R + RL));
-        Iz = 0;
-        Il = Vout / RL;
-    } else {
-        // Zener regulating
-        Vout = Vz;
-        Iz = Itotal - Il;
-    }
-
-    document.getElementById("vout").innerText = Vout.toFixed(2);
-    document.getElementById("iz").innerText = (Iz * 1000).toFixed(2);
-    document.getElementById("il").innerText = (Il * 1000).toFixed(2);
+function humanOhm(R){
+  if(R>=1000) return (R/1000).toFixed(2) + ' kΩ';
+  return R.toFixed(0) + ' Ω';
 }
 
-document.querySelectorAll("input").forEach(el => {
-    el.addEventListener("input", update);
+// default values
+let state = {
+  Vin: parseFloat(vinSlider.value),
+  R: parseFloat(rSlider.value),
+  Vz: parseFloat(vzSlider.value),
+  rz: parseFloat(rzSlider.value),
+  orient: orientation.value,
+  Vf: 0.7
+}
+
+function updateStateFromUI(){
+  state.Vin = parseFloat(vinSlider.value);
+  state.R = parseFloat(rSlider.value);
+  state.Vz = parseFloat(vzSlider.value);
+  state.rz = parseFloat(rzSlider.value);
+  state.orient = orientation.value;
+  vinVal.textContent = state.Vin.toFixed(2) + ' V';
+  rVal.textContent = humanOhm(state.R);
+  vzVal.textContent = state.Vz.toFixed(2) + ' V';
+  rzVal.textContent = state.rz.toFixed(0) + ' Ω';
+  svgVin.textContent = state.Vin.toFixed(2) + ' V';
+  svgR.textContent = humanOhm(state.R);
+  svgVz.textContent = 'Vz = ' + state.Vz.toFixed(2) + ' V';
+}
+
+function computeCircuit(){
+  // Very simple piecewise model:
+  // If orientation == 'reverse' we treat diode as reverse zener: when |Vout| >= Vz, diode clamps
+  // For simplicity we assume reference ground at diode cathode (so Vout = diode voltage). We'll simulate node across diode.
+  // Solve: if diode clamps at Vz: Vout = sign(Vin)*Vz ; ID = (Vin - Vout)/R ; include r_z as small series resistance across diode
+
+  let Vin = state.Vin;
+  let R = state.R;
+  let Vz = state.Vz;
+  let rz = state.rz;
+  let Vf = state.Vf;
+
+  let Vout = 0;
+  let Id = 0; // diode current (positive when from source into diode)
+
+  if(state.orient === 'reverse'){
+    // reverse zener clamp when Vin (positive or negative) pushes diode into breakdown
+    // If Vin is positive and wants to push cathode positive w.r.t anode -> not breakdown; if Vin positive and diode oriented reverse, we must see negative across diode??
+    // To avoid user confusion we'll model common textbook circuit: Vin -> R -> diode (cathode to output) -> to ground.
+    // In reverse mode: diode clamps Vout to +Vz when Vin > Vz (so positive clamp)
+
+    if(Vin <= 0){
+      // negative or zero Vin: no clamp, diode off (unless large negative beyond Vf forward), handle forward conduction in negative region
+      if(Vin < -Vf){
+        Vout = -Vf; // forward conduction at ~Vf
+        Id = (Vin - Vout) / R;
+      } else {
+        Vout = Vin; // essentially no conduction, open circuit -> Vout = Vin (no current)
+        Id = 0;
+      }
+    } else {
+      // Vin positive
+      if(Vin > Vz){
+        // zener clamps: Vout ~ Vz + Id * rz ; solve for Id: Id = (Vin - (Vz + Id*rz))/R -> Id*(1 + rz/R) = (Vin - Vz)/R
+        Id = (Vin - Vz) / (R + rz);
+        Vout = Vz + Id * rz;
+      } else {
+        // not enough to break down -> diode off -> Vout = Vin
+        Vout = Vin;
+        Id = 0;
+      }
+    }
+  } else {
+    // forward orientation: diode behaves like normal diode forward at ~Vf if Vin > Vf
+    if(Vin > Vf){
+      Vout = Vf; // clamp to forward drop
+      Id = (Vin - Vout) / R;
+    } else {
+      Vout = Vin; // open
+      Id = 0;
+    }
+  }
+
+  return {Vout, Id};
+}
+
+function formatCurrent(I){
+  // I in A
+  const m = I*1000;
+  if(Math.abs(m) < 1) return (m*1000).toFixed(2) + ' µA';
+  return m.toFixed(3) + ' mA';
+}
+
+function render(){
+  updateStateFromUI();
+  const {Vout, Id} = computeCircuit();
+  voutEl.textContent = Vout.toFixed(3) + ' V';
+  idEl.textContent = formatCurrent(Id);
+  drawIV(Vout, Id);
+}
+
+// draw IV curve for zener diode with a simple model: forward diode at Vf, reverse breakdown at -Vz
+function drawIV(selectedV, selectedI){
+  const ctx = ivCtx;
+  const W = ivCanvas.width; const H = ivCanvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  // grid
+  for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // axis lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+
+  // transform: x maps voltage [-20,20] -> [40,W-40], y maps current range
+  const Vmin = -20, Vmax = 20;
+  const Imax = 0.02; // 20 mA for plotting
+
+  function vx(v){ return 40 + ( (v - Vmin) / (Vmax - Vmin) ) * (W - 80); }
+  function vy(i){ return H - 20 - ( (i + Imax) / (2*Imax) ) * (H - 60); }
+
+  // compute modelled curve points
+  const points = [];
+  for(let v=Vmin; v<=Vmax; v+=0.1){
+    // simple diode model:
+    let i = 0;
+    if(state.orient === 'reverse'){
+      if(v < -state.Vf){
+        // forward conduction in negative voltages
+        i = (v + state.Vf) / 1; // steep slope - rough
+      } else if(v > state.Vz){
+        // breakdown region -> large current
+        // approximate as (v - Vz)/rz but here v is voltage across diode
+        i = (v - state.Vz) / state.rz;
+      } else {
+        i = 0; // off
+      }
+    } else {
+      // forward orientation, diode conducts when v >= Vf
+      if(v > state.Vf) i = (v - state.Vf) / 1;
+      else i = 0;
+    }
+    points.push({v, i});
+  }
+
+  // plot curve
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let k=0;k<points.length;k++){
+    const p = points[k];
+    const x = vx(p.v), y = vy(Math.max(-Imax, Math.min(Imax, p.i)));
+    if(k===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle = '#7bd389';
+  ctx.stroke();
+
+  // draw selected vertical line at selectedV
+  ctx.beginPath(); ctx.moveTo(vx(selectedV), 10); ctx.lineTo(vx(selectedV), H-10); ctx.strokeStyle = 'rgba(255,165,0,0.15)'; ctx.lineWidth=8; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(vx(selectedV), 10); ctx.lineTo(vx(selectedV), H-10); ctx.strokeStyle = 'rgba(255,165,0,0.6)'; ctx.lineWidth=1; ctx.stroke();
+
+  // draw marker for current on curve (approximate by interpolation from points)
+  // find nearest point
+  let closest = points.reduce((a,b)=> Math.abs(b.v - selectedV) < Math.abs(a.v - selectedV) ? b : a);
+  const mx = vx(closest.v), my = vy(Math.max(-Imax, Math.min(Imax, closest.i)));
+  ctx.fillStyle = '#ffb78f';
+  ctx.beginPath(); ctx.arc(mx,my,5,0,Math.PI*2); ctx.fill();
+
+  // labels
+  ctx.fillStyle = '#cfeff0'; ctx.font = '12px ' + getComputedStyle(document.body).fontFamily;
+  ctx.fillText('Voltage (V)', W - 90, H/2 + 16);
+  ctx.fillText('Current (A)', W/2 + 14, 18);
+
+  // show values
+  ctx.fillStyle = '#7bd389'; ctx.fillText('V = ' + selectedV.toFixed(3) + ' V', 46, 22);
+  ctx.fillStyle = '#ffb78f'; ctx.fillText('I ≈ ' + formatCurrent(closest.i || 0), 46, 40);
+}
+
+// wire up events
+[vinSlider, rSlider, vzSlider, rzSlider, orientation].forEach(el => el.addEventListener('input', render));
+resetBtn.addEventListener('click', ()=>{
+  vinSlider.value = 12; rSlider.value = 1000; vzSlider.value = 5.6; rzSlider.value = 10; orientation.value = 'reverse'; render();
 });
 
-update();
+// initial render
+render();
 </script>
-
 </body>
 </html>
